@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Slide, TextElement, Decoration, DecorationType, FontFamily, SlideImage, SelectedElementInfo } from '../types';
-import { AVAILABLE_FONTS, DEFAULT_BORDER_WIDTH } from '../constants';
+import { Slide, TextElement, Decoration, DecorationType, FontFamily, SlideImage, SelectedElementInfo, ExposedWindow, GeometricShapeItem, SlideDimensions } from '../types';
+import { AVAILABLE_FONTS, DEFAULT_BORDER_WIDTH, BLOB_GENERATION_SIZE, BLOB_VISUAL_SIZE_IN_VIEWBOX, DEFAULT_BLOB_EDGES, DEFAULT_BLOB_GROWTH } from '../constants';
+import { calculatePolygonPoints } from '../utils/graphicUtils'; 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import blobshape from 'blobshape';
-import { BlobCornerDecorationType } from '../constants';
 
 interface SlideDisplayProps {
   slide: Slide | null;
   slideIndex?: number;
-  size: number;
+  dimensions: SlideDimensions; // Changed from size: number
   isExporting?: boolean;
   selectedElementInfo?: SelectedElementInfo | null;
   onSelectElement?: (element: SelectedElementInfo) => void;
@@ -25,7 +24,7 @@ const getFontClassName = (fontFamily: FontFamily): string => {
 const renderDecoration = (
   decoration: Decoration,
   slideBackgroundColor: string,
-  slideSize: number,
+  // slideDimensions: SlideDimensions, // Not directly needed here as SVG is 0-100
   slideIndex?: number
 ): React.ReactNode => {
   const commonStyleBase: React.CSSProperties = {
@@ -34,8 +33,8 @@ const renderDecoration = (
     position: 'absolute',
     top: 0,
     left: 0,
-    zIndex: 0,
-    boxSizing: 'border-box', // Important for borders
+    zIndex: 0, 
+    boxSizing: 'border-box', 
   };
 
   const pageNumberText = typeof slideIndex === 'number' && decoration.showPageNumber
@@ -44,16 +43,39 @@ const renderDecoration = (
 
   const textStyle: React.SVGProps<SVGTextElement> = {
     fontFamily: 'sans-serif',
-    fontSize: '6px',
-    fill: slideBackgroundColor,
+    fontSize: '6px', 
+    fill: slideBackgroundColor, 
     fontWeight: 'bold',
     pointerEvents: 'none',
   };
+  
+  let blobTransform: string | undefined;
+
+  if (decoration.type.startsWith('CORNER_BLOB_')) {
+    const scaleFactor = BLOB_VISUAL_SIZE_IN_VIEWBOX / BLOB_GENERATION_SIZE; 
+    const scaledCenterOffset = BLOB_VISUAL_SIZE_IN_VIEWBOX / 2; 
+    
+    switch (decoration.type) {
+        case DecorationType.CORNER_BLOB_TOP_LEFT:
+            blobTransform = `translate(-${scaledCenterOffset}, -${scaledCenterOffset}) scale(${scaleFactor})`;
+            break;
+        case DecorationType.CORNER_BLOB_TOP_RIGHT:
+            blobTransform = `translate(${100 - scaledCenterOffset}, -${scaledCenterOffset}) scale(${scaleFactor})`;
+            break;
+        case DecorationType.CORNER_BLOB_BOTTOM_LEFT:
+            blobTransform = `translate(-${scaledCenterOffset}, ${100 - scaledCenterOffset}) scale(${scaleFactor})`;
+            break;
+        case DecorationType.CORNER_BLOB_BOTTOM_RIGHT:
+            blobTransform = `translate(${100 - scaledCenterOffset}, ${100 - scaledCenterOffset}) scale(${scaleFactor})`;
+            break;
+    }
+  }
+
 
   switch (decoration.type) {
     case DecorationType.CORNER_ELEMENT_TOP_LEFT:
       return (
-        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="none" key={decoration.id}>
+        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="xMinYMin meet" key={decoration.id}>
           <path d="M0,0 L30,0 L0,30 Z" fill={decoration.color} />
           {pageNumberText && (
             <text x="5" y="12" {...textStyle}>{pageNumberText}</text>
@@ -62,7 +84,7 @@ const renderDecoration = (
       );
     case DecorationType.CORNER_ELEMENT_TOP_RIGHT:
       return (
-        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="none" key={decoration.id}>
+        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="xMaxYMin meet" key={decoration.id}>
           <path d="M100,0 L70,0 L100,30 Z" fill={decoration.color} />
            {pageNumberText && (
             <text x="95" y="12" textAnchor="end" {...textStyle}>{pageNumberText}</text>
@@ -71,7 +93,7 @@ const renderDecoration = (
       );
     case DecorationType.CORNER_ELEMENT_BOTTOM_LEFT:
       return (
-        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="none" key={decoration.id}>
+        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="xMinYMax meet" key={decoration.id}>
           <path d="M0,100 L30,100 L0,70 Z" fill={decoration.color} />
           {pageNumberText && (
             <text x="5" y="92" {...textStyle}>{pageNumberText}</text>
@@ -80,7 +102,7 @@ const renderDecoration = (
       );
     case DecorationType.CORNER_ELEMENT_BOTTOM_RIGHT:
       return (
-        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="none" key={decoration.id}>
+        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="xMaxYMax meet" key={decoration.id}>
           <path d="M100,100 L70,100 L100,70 Z" fill={decoration.color} />
           {pageNumberText && (
             <text x="95" y="92" textAnchor="end" {...textStyle}>{pageNumberText}</text>
@@ -103,47 +125,80 @@ const renderDecoration = (
           }}
         />
       );
-    // --- Blob Corner Decorations ---
-    case BlobCornerDecorationType.CORNER_BLOB_TOP_LEFT: {
-      const blob = blobshape({ edge: 20, growth: 5 });
+    case DecorationType.CORNER_BLOB_TOP_LEFT:
       return (
-        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="none" key={decoration.id}>
-          <g transform="translate(0,0) scale(0.5,0.5)">
-            <path d={blob.path} fill={decoration.color} />
+        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="xMinYMin meet" key={decoration.id}>
+          {decoration.blobPathData && <path d={decoration.blobPathData} fill={decoration.color} transform={blobTransform} />}
+          {pageNumberText && ( <text x="5" y="12" {...textStyle}>{pageNumberText}</text> )}
+        </svg>
+      );
+    case DecorationType.CORNER_BLOB_TOP_RIGHT:
+      return (
+        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="xMaxYMin meet" key={decoration.id}>
+          {decoration.blobPathData && <path d={decoration.blobPathData} fill={decoration.color} transform={blobTransform} />}
+          {pageNumberText && ( <text x="95" y="12" textAnchor="end" {...textStyle}>{pageNumberText}</text> )}
+        </svg>
+      );
+    case DecorationType.CORNER_BLOB_BOTTOM_LEFT:
+      return (
+        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="xMinYMax meet" key={decoration.id}>
+          {decoration.blobPathData && <path d={decoration.blobPathData} fill={decoration.color} transform={blobTransform} />}
+          {pageNumberText && ( <text x="5" y="92" {...textStyle}>{pageNumberText}</text> )}
+        </svg>
+      );
+    case DecorationType.CORNER_BLOB_BOTTOM_RIGHT:
+      return (
+        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="xMaxYMax meet" key={decoration.id}>
+          {decoration.blobPathData && <path d={decoration.blobPathData} fill={decoration.color} transform={blobTransform} />}
+          {pageNumberText && ( <text x="95" y="92" textAnchor="end" {...textStyle}>{pageNumberText}</text> )}
+        </svg>
+      );
+    case DecorationType.GEOMETRIC_BACKGROUND:
+      if (!decoration.geometricShapes || decoration.geometricShapes.length === 0) {
+        return null;
+      }
+      const shapesToRender = decoration.geometricShapes.slice(
+        0,
+        decoration.visibleShapeCount ?? decoration.geometricShapes.length
+      );
+
+      return (
+        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" key={decoration.id}>
+          <g>
+            {shapesToRender.map((shape: GeometricShapeItem) => {
+              const commonShapeProps = {
+                fill: shape.fill,
+                opacity: shape.opacity,
+              };
+              
+              if (shape.shapeType === 'circle') {
+                return (
+                  <circle
+                    key={shape.id}
+                    cx={0} 
+                    cy={0} 
+                    r={shape.size}
+                    {...commonShapeProps}
+                    transform={`translate(${shape.cx} ${shape.cy}) rotate(${shape.rotation})`}
+                  />
+                );
+              } else {
+                // For polygons, points are pre-calculated around (0,0) origin
+                // Or, if they were calculated relative to cx, cy, the translate below would be redundant
+                // Assuming points are relative to (0,0)
+                return (
+                  <polygon
+                    key={shape.id}
+                    points={shape.points} 
+                    {...commonShapeProps}
+                    transform={`translate(${shape.cx} ${shape.cy}) rotate(${shape.rotation})`}
+                  />
+                );
+              }
+            })}
           </g>
         </svg>
       );
-    }
-    case BlobCornerDecorationType.CORNER_BLOB_TOP_RIGHT: {
-      const blob = blobshape({ edge: 20, growth: 5 });
-      return (
-        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="none" key={decoration.id}>
-          <g transform="translate(100,0) scale(-0.5,0.5)">
-            <path d={blob.path} fill={decoration.color} />
-          </g>
-        </svg>
-      );
-    }
-    case BlobCornerDecorationType.CORNER_BLOB_BOTTOM_LEFT: {
-      const blob = blobshape({ edge: 20, growth: 5 });
-      return (
-        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="none" key={decoration.id}>
-          <g transform="translate(0,100) scale(0.5,-0.5)">
-            <path d={blob.path} fill={decoration.color} />
-          </g>
-        </svg>
-      );
-    }
-    case BlobCornerDecorationType.CORNER_BLOB_BOTTOM_RIGHT: {
-      const blob = blobshape({ edge: 20, growth: 5 });
-      return (
-        <svg style={commonStyleBase} viewBox="0 0 100 100" preserveAspectRatio="none" key={decoration.id}>
-          <g transform="translate(100,100) scale(-0.5,-0.5)">
-            <path d={blob.path} fill={decoration.color} />
-          </g>
-        </svg>
-      );
-    }
     default:
       return null;
   }
@@ -153,7 +208,7 @@ const renderDecoration = (
 const SlideDisplay: React.FC<SlideDisplayProps> = ({
   slide,
   slideIndex,
-  size,
+  dimensions, // Changed from size
   isExporting = false,
   selectedElementInfo = null,
   onSelectElement,
@@ -178,14 +233,16 @@ const SlideDisplay: React.FC<SlideDisplayProps> = ({
       const elementTopLeftXPx = mouseXInSlidePx - dragStartOffsetRef.current.x;
       const elementTopLeftYPx = mouseYInSlidePx - dragStartOffsetRef.current.y;
 
-      let newXPercent = (elementTopLeftXPx / size) * 100;
-      let newYPercent = (elementTopLeftYPx / size) * 100;
+      let newXPercent = (elementTopLeftXPx / dimensions.width) * 100; // Use dimensions.width
+      let newYPercent = (elementTopLeftYPx / dimensions.height) * 100; // Use dimensions.height
 
       if (dragTargetRef.current.type === 'text' && slide) {
         const textEl = slide.textElements.find(el => el.id === dragTargetRef.current!.id);
         if (textEl && onUpdateTextElement) {
           newXPercent = Math.max(0, Math.min(newXPercent, 100 - textEl.width));
-          const approxTextHeightPercent = (textEl.fontSize * 1.2 * (textEl.content.split('\n').length + 1) / size) * 100;
+          // Approximate height based on font size and number of lines in the taller dimension
+          const relevantDimensionForTextHeight = Math.max(dimensions.width, dimensions.height);
+          const approxTextHeightPercent = (textEl.fontSize * 1.2 * (textEl.content.split('\n').length +1 ) / relevantDimensionForTextHeight) * 100;
           newYPercent = Math.max(0, Math.min(newYPercent, 100 - approxTextHeightPercent));
           onUpdateTextElement(textEl.id, { x: newXPercent, y: newYPercent });
         }
@@ -215,14 +272,14 @@ const SlideDisplay: React.FC<SlideDisplayProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, size, slide, onUpdateTextElement, onUpdateImageElement]);
+  }, [isDragging, dimensions, slide, onUpdateTextElement, onUpdateImageElement]); // dimensions instead of size
 
   if (!slide) {
     return (
       <Box
         sx={{
-          width: size,
-          height: size,
+          width: dimensions.width, // Use dimensions.width
+          height: dimensions.height, // Use dimensions.height
           bgcolor: 'grey.200',
           border: 1,
           borderColor: 'grey.300',
@@ -258,25 +315,21 @@ const SlideDisplay: React.FC<SlideDisplayProps> = ({
     dragStartOffsetRef.current = { x: mouseXInElement, y: mouseYInElement };
     draggedElementInitialPercentRef.current = { x: currentXPercent, y: currentYPercent };
 
-
+    // Logic for selecting image if text element is clicked and image exists (this specific UX might need review)
     if (selectedElementInfo?.id === elementId && selectedElementInfo?.type === 'text' && type === 'text' && slide.image) {
       dragTargetRef.current = { id: slide.image.id, type: 'image' };
       onSelectElement({ id: slide.image.id, type: 'image' });
       draggedElementInitialPercentRef.current = { x: slide.image.x, y: slide.image.y };
       const imageElement = document.getElementById(`slide-image-${slide.image.id}`);
       if (imageElement) {
-          const imageRect = imageElement.getBoundingClientRect();
           const mouseXOnSlide = e.clientX - slideRect.left;
           const mouseYOnSlide = e.clientY - slideRect.top;
-
-          const imageXpx = (slide.image.x / 100) * size;
-          const imageYpx = (slide.image.y / 100) * size;
-
+          const imageXpx = (slide.image.x / 100) * dimensions.width; // Use dimensions.width
+          const imageYpx = (slide.image.y / 100) * dimensions.height; // Use dimensions.height
           dragStartOffsetRef.current = { x: mouseXOnSlide - imageXpx, y: mouseYOnSlide - imageYpx};
       } else {
         dragStartOffsetRef.current = { x: 0, y: 0};
       }
-
     } else {
       dragTargetRef.current = { id: elementId, type };
       onSelectElement({ id: elementId, type });
@@ -297,6 +350,7 @@ const SlideDisplay: React.FC<SlideDisplayProps> = ({
       left: `${el.x}%`,
       top: `${el.y}%`,
       width: `${el.width}%`,
+      // height will be auto based on content, for text.
       color: el.color,
       fontSize: `${el.fontSize}px`,
       fontWeight: el.fontWeight || 'normal',
@@ -335,8 +389,8 @@ const SlideDisplay: React.FC<SlideDisplayProps> = ({
       ref={slideRef}
       className="slide-render-area"
       style={{
-        width: size,
-        height: size,
+        width: dimensions.width, // Use dimensions.width
+        height: dimensions.height, // Use dimensions.height
         backgroundColor: slide.backgroundColor,
         position: 'relative',
         overflow: 'hidden',
@@ -345,9 +399,9 @@ const SlideDisplay: React.FC<SlideDisplayProps> = ({
         userSelect: isDragging ? 'none' : 'auto',
       }}
       onClick={handleSlideBackgroundClick}
-      aria-label="Slide preview area"
+      aria-label={`Slide preview area. Width: ${dimensions.width}px, Height: ${dimensions.height}px.`}
     >
-      {slide.decorations.map(dec => renderDecoration(dec, slide.backgroundColor, size, slideIndex))}
+      {slide.decorations.map(dec => renderDecoration(dec, slide.backgroundColor, /*dimensions,*/ slideIndex))}
 
       {slide.image && (() => {
         const img = slide.image;

@@ -27,8 +27,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # - name: Type check
-      #   run: npm run typecheck
+      - name: Type check
+        run: npm run typecheck
 
       - name: Build application
         run: npm run build # This executes node build.mjs
@@ -39,7 +39,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist # The directory containing your built static files
+          path: ./docs # The directory containing your built static files
 
   deploy:
     needs: build

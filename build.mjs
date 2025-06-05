@@ -9,9 +9,9 @@ const entryPoint = 'index.tsx'; // Your main application entry point
 // External packages (loaded via import map in index.html)
 // These should match the keys in your importmap
 const externalPackages = [
-  'react', 'react-dom',
-  '@mui/material', '@mui/icons-material',
-  '@emotion/react', '@emotion/styled',
+  'react', 'react/', 'react-dom/', 
+  '@mui/material/', '@mui/icons-material/', 
+  '@emotion/react', '@emotion/styled', '@mui/material',
   'blobshape'
 ];
 
@@ -55,16 +55,7 @@ async function build() {
     /<script type="module" src="\/index.tsx"><\/script>/,
     '<script type="module" src="./main.js"></script>'
   );
-  // Also handle relative path (in case it's not absolute)
-  indexHtmlContent = indexHtmlContent.replace(
-    /<script type="module" src="\.\.?\/index.tsx"><\/script>/,
-    '<script type="module" src="./main.js"></script>'
-  );
-  // Remove any duplicate script tags for index.tsx
-  indexHtmlContent = indexHtmlContent.replace(
-    /<script type="module" src="index.tsx"><\/script>/g,
-    ''
-  );
+  // Ensure any other dev-specific paths are handled if necessary
 
   await fs.writeFile(indexPath, indexHtmlContent);
   console.log('index.html updated.');

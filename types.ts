@@ -24,27 +24,47 @@ export enum DecorationType {
   CORNER_ELEMENT_TOP_RIGHT = 'CORNER_ELEMENT_TOP_RIGHT',
   CORNER_ELEMENT_BOTTOM_LEFT = 'CORNER_ELEMENT_BOTTOM_LEFT',
   CORNER_SELECTOR = 'CORNER_SELECTOR', // UI Grouping type
-  // Add blob corner types
+  BLOB_SELECTOR = 'BLOB_SELECTOR', // UI Grouping type for blobs
   CORNER_BLOB_TOP_LEFT = 'CORNER_BLOB_TOP_LEFT',
   CORNER_BLOB_TOP_RIGHT = 'CORNER_BLOB_TOP_RIGHT',
   CORNER_BLOB_BOTTOM_LEFT = 'CORNER_BLOB_BOTTOM_LEFT',
   CORNER_BLOB_BOTTOM_RIGHT = 'CORNER_BLOB_BOTTOM_RIGHT',
+  GEOMETRIC_BACKGROUND = 'GEOMETRIC_BACKGROUND', 
+}
+
+export type GeometricShapeType = 'circle' | 'triangle' | 'square' | 'pentagon' | 'hexagon';
+
+export interface GeometricShapeItem {
+  id: string;
+  shapeType: GeometricShapeType;
+  cx: number; 
+  cy: number; 
+  size: number; 
+  fill: string; 
+  opacity: number;
+  rotation: number; 
+  points?: string; 
 }
 
 export interface Decoration {
   id: string;
   type: DecorationType;
-  color: string; // Primary color for the decoration
-  secondaryColor?: string; // Optional secondary color
+  color: string; 
+  secondaryColor?: string; 
   showPageNumber?: boolean;
-  // Properties specific to BORDER_SIMPLE
   borderSides?: {
     top: boolean;
     right: boolean;
     bottom: boolean;
     left: boolean;
   };
-  borderWidth?: number; // in px
+  borderWidth?: number; 
+  blobGrowth?: number; 
+  blobEdges?: number; 
+  blobPathData?: string; 
+  geometricShapes?: GeometricShapeItem[];
+  selectedShapeType?: GeometricShapeType | 'mixed'; 
+  visibleShapeCount?: number; 
 }
 
 export interface DecorationOption {
@@ -76,7 +96,7 @@ export interface TextElement {
   fontWeight?: 'normal' | 'bold';
   fontStyle?: 'normal' | 'italic';
   textDecoration?: 'none' | 'underline';
-  zIndex?: number; // Optional zIndex, defaults to 10 for text
+  zIndex?: number; 
 }
 
 export enum TextTemplateType {
@@ -90,7 +110,7 @@ export enum TextTemplateType {
 export interface TextTemplate {
   id: TextTemplateType;
   name: string;
-  elements: Omit<TextElement, 'id' | 'content' | 'color'>[]; // color will be from theme
+  elements: Omit<TextElement, 'id' | 'content' | 'color'>[]; 
 }
 
 export interface SlideThemePalette {
@@ -104,15 +124,15 @@ export interface SlideThemePalette {
 
 export interface SlideImage {
   id: string;
-  src: string; // data URL
+  src: string; 
   alt: string;
   originalWidth: number;
   originalHeight: number;
-  x: number; // percentage, top-left
-  y: number; // percentage, top-left
-  width: number; // percentage, width of the image's container on the slide
-  height: number; // percentage, height of the image's container on the slide
-  zIndex?: number; // Optional zIndex, defaults to 1 for image
+  x: number; 
+  y: number; 
+  width: number; 
+  height: number; 
+  zIndex?: number; 
 }
 
 export interface Slide {
@@ -140,3 +160,15 @@ export type SelectedElementInfo = {
   id: string;
   type: 'text' | 'image';
 } | null;
+
+export type AspectRatio = '1:1' | '4:5' | '3:4';
+
+export interface SlideDimensions {
+  width: number;
+  height: number;
+}
+
+export interface SlideSizeOption {
+  value: SlideDimensions;
+  label: string;
+}
