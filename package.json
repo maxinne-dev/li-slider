@@ -8,9 +8,12 @@
     "email": "hello@maxinne.me"
   },
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "clean": "rimraf docs",
     "typecheck": "tsc --noEmit",
-    "build": "node build.mjs",
+    "build-mjs": "node build.mjs",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d docs"
   },

@@ -9,9 +9,9 @@ const entryPoint = 'index.tsx'; // Your main application entry point
 // External packages (loaded via import map in index.html)
 // These should match the keys in your importmap
 const externalPackages = [
-  'react', 'react/', 'react-dom/', 
-  '@mui/material/', '@mui/icons-material/', 
-  '@emotion/react', '@emotion/styled', '@mui/material',
+  'react', 'react-dom',
+  '@mui/material', '@mui/icons-material',
+  '@emotion/react', '@emotion/styled',
   'blobshape'
 ];
 

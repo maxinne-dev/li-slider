@@ -1,6 +1,6 @@
 {
-  "name": "Slide Creator",
-  "description": "A web application to create slideshows with various aspect ratios, custom backgrounds, text, and geometric decorations, and export them as PDF. All processing is done in the browser.",
+  "name": "Square Slide Creator",
+  "description": "A web application to create square slideshows with custom backgrounds, text, and geometric decorations, and export them as PDF for LinkedIn carousels. All processing is done in the browser.",
   "requestFramePermissions": [],
   "prompt": ""
 }

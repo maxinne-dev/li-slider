@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Slide Creator</title>
+  <title>Square Slide Creator</title>
   <script src="https://cdn.tailwindcss.com"></script> <!-- Keep for overall layout and non-MUI parts for now -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Open+Sans:wght@400;700&family=Playfair+Display:wght@400;700&family=Poppins:wght@400;700&family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  
   <script>
     // Tailwind CSS dark mode setup
     tailwind.config = {
@@ -24,6 +23,8 @@
   </script>
   <script>
     // Initialize theme from localStorage before React loads
+    // This script specifically sets the 'dark' class on <html> if needed.
+    // MUI's CssBaseline and ThemeProvider will handle the rest.
     (function() {
       const theme = localStorage.getItem('app-theme');
       if (theme === 'dark') {
@@ -52,7 +53,7 @@
     }
 
     html.dark ::-webkit-scrollbar-track {
-      background: #1a202c; 
+      background: #1a202c; /* Consider using MUI theme variables here later if possible */
     }
     html.dark ::-webkit-scrollbar-thumb {
       background: #4a5568;
@@ -65,11 +66,12 @@
     .font-lato { font-family: 'Lato', sans-serif; }
     .font-montserrat { font-family: 'Montserrat', sans-serif; }
     .font-open-sans { font-family: 'Open Sans', sans-serif; }
-    .font-roboto { font-family: 'Roboto', sans-serif; } 
+    .font-roboto { font-family: 'Roboto', sans-serif; } /* MUI uses Roboto by default, this can be a fallback or for slide content */
     .font-playfair-display { font-family: 'Playfair Display', serif; }
     .font-source-code-pro { font-family: 'Source Code Pro', monospace; }
     .font-poppins { font-family: 'Poppins', sans-serif; }
 
+    /* Ensure html2canvas captures background colors correctly */
     .slide-render-area {
       background-color: inherit;
     }
@@ -87,8 +89,7 @@
     "@mui/icons-material/": "https://esm.sh/@mui/icons-material@^5.16.0/",
     "@emotion/react": "https://esm.sh/@emotion/react@^11.11.4",
     "@emotion/styled": "https://esm.sh/@emotion/styled@^11.11.5",
-    "@mui/material": "https://esm.sh/@mui/material@^5.16.0",
-    "blobshape": "https://esm.sh/blobshape@^1.0.0"
+    "@mui/material": "https://esm.sh/@mui/material@^5.16.0"
   }
 }
 </script>
@@ -96,6 +97,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" src="./main.js"></script>
+  <script type="module" src="/index.tsx"></script>
 </body>
 </html>

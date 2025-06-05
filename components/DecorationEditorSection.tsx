@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Decoration, DecorationType, Slide, DecorationOption, GeometricShapeType } from '../types'; 
-import { DECORATION_OPTIONS, CORNER_TYPES_OPTIONS, BORDER_THICKNESS_OPTIONS, DEFAULT_BORDER_WIDTH, BLOB_CORNER_TYPES_OPTIONS, BLOB_GENERATION_SIZE, DEFAULT_BLOB_EDGES, DEFAULT_BLOB_GROWTH, GEOMETRIC_SHAPE_FILTER_OPTIONS } from '../constants';
-import { generateGeometricShapes } from '../utils/graphicUtils'; // New import
-import blobshape from 'blobshape';
+import { Decoration, DecorationType, Slide, DecorationOption } from '../types'; // Added DecorationOption
+import { DECORATION_OPTIONS, CORNER_TYPES_OPTIONS, BORDER_THICKNESS_OPTIONS, DEFAULT_BORDER_WIDTH } from '../constants';
+import { CORNER_BLOB_TYPES_OPTIONS } from '../constants';
 
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -11,7 +10,6 @@ import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from '@mui/icons-material/Delete';
-import RefreshIcon from '@mui/icons-material/Refresh'; 
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Switch from '@mui/material/Switch';
@@ -23,7 +21,6 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
-import Slider from '@mui/material/Slider'; // New import
 
 import BorderTopIcon from '@mui/icons-material/BorderTop';
 import BorderRightIcon from '@mui/icons-material/BorderRight';
@@ -47,7 +44,6 @@ const DecorationEditorSection: React.FC<DecorationEditorSectionProps> = ({
   const [cornerMenuAnchorEl, setCornerMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [blobCornerMenuAnchorEl, setBlobCornerMenuAnchorEl] = useState<null | HTMLElement>(null);
 
-
   const handleCornerMenuClick = (event: React.MouseEvent<HTMLElement>) => {
     setCornerMenuAnchorEl(event.currentTarget);
   };
@@ -60,7 +56,12 @@ const DecorationEditorSection: React.FC<DecorationEditorSectionProps> = ({
     onAddDecoration(type);
     handleCornerMenuClose();
   };
-  
+
+  const handleAddBlobToCorner = (type: string) => {
+    onAddDecoration(type as any);
+    handleBlobCornerMenuClose();
+  };
+
   const handleBlobCornerMenuClick = (event: React.MouseEvent<HTMLElement>) => {
     setBlobCornerMenuAnchorEl(event.currentTarget);
   };
@@ -69,64 +70,20 @@ const DecorationEditorSection: React.FC<DecorationEditorSectionProps> = ({
     setBlobCornerMenuAnchorEl(null);
   };
 
-  const handleAddSpecificBlobCorner = (type: DecorationType) => {
-    onAddDecoration(type);
-    handleBlobCornerMenuClose();
-  };
-
-
   const handleAddDecoration = (type: DecorationType) => {
-    if (type !== DecorationType.NONE && type !== DecorationType.CORNER_SELECTOR && type !== DecorationType.BLOB_SELECTOR) {
+    if (type !== DecorationType.NONE && type !== DecorationType.CORNER_SELECTOR) {
       onAddDecoration(type);
     }
+    // For CORNER_SELECTOR, the action is handled by handleCornerMenuClick
   };
 
+  const isCornerDecoration = (type: DecorationType) => {
+    return CORNER_TYPES_OPTIONS.some(opt => opt.type === type);
+  };
 
   const handleBorderWidthChange = (decorationId: string, event: SelectChangeEvent<number>) => {
     onUpdateDecoration(decorationId, { borderWidth: Number(event.target.value) });
   };
-
-  const handleRefreshBlobShape = (decoration: Decoration) => {
-    const newPathData = blobshape({
-      size: BLOB_GENERATION_SIZE,
-      edges: decoration.blobEdges ?? DEFAULT_BLOB_EDGES,
-      growth: decoration.blobGrowth ?? DEFAULT_BLOB_GROWTH,
-    }).path;
-    onUpdateDecoration(decoration.id, { blobPathData: newPathData });
-  };
-  
-  const handleRefreshGeometricShapes = (decoration: Decoration) => {
-    const newGeometricShapes = generateGeometricShapes(decoration.color, 100, decoration.selectedShapeType || 'mixed');
-    onUpdateDecoration(decoration.id, { 
-      geometricShapes: newGeometricShapes,
-      visibleShapeCount: newGeometricShapes.length // Reset count to new total
-    });
-  };
-
-  const handleGeometricShapeTypeChange = (decorationId: string, event: SelectChangeEvent<GeometricShapeType | 'mixed'>) => {
-    const newShapeType = event.target.value as GeometricShapeType | 'mixed';
-    // First, update the selectedShapeType
-    // Then, trigger a refresh which will use this new type and also reset visibleShapeCount
-    // This requires onUpdateDecoration to be synchronous enough for the new type to be available for generateGeometricShapes,
-    // or we pass the newShapeType directly to a modified handleRefreshGeometricShapes.
-    // For simplicity with current structure, we'll assume onUpdateDecoration is quick,
-    // then the refresh will pick up the latest from the activeSlide prop (which might have a slight delay if not careful)
-    // A safer way:
-    const currentDecoration = activeSlide.decorations.find(d => d.id === decorationId);
-    if (currentDecoration) {
-        const newGeometricShapes = generateGeometricShapes(currentDecoration.color, 100, newShapeType);
-        onUpdateDecoration(decorationId, {
-            selectedShapeType: newShapeType,
-            geometricShapes: newGeometricShapes,
-            visibleShapeCount: newGeometricShapes.length
-        });
-    }
-  };
-  
-  const handleVisibleShapeCountChange = (decorationId: string, newValue: number | number[]) => {
-     onUpdateDecoration(decorationId, { visibleShapeCount: newValue as number });
-  };
-
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
@@ -138,25 +95,29 @@ const DecorationEditorSection: React.FC<DecorationEditorSectionProps> = ({
           {DECORATION_OPTIONS.filter(opt => opt.id !== DecorationType.NONE).map(option => (
             <Grid xs={6} sm={4} key={option.id}>
               <Button
-                id={option.id === DecorationType.CORNER_SELECTOR ? 'corner-shape-button' : (option.id === DecorationType.BLOB_SELECTOR ? 'blob-corner-shape-button' : undefined)}
                 variant="outlined"
                 fullWidth
                 onClick={(event) => {
                   if (option.id === DecorationType.CORNER_SELECTOR) {
                     handleCornerMenuClick(event);
-                  } 
-                  else if (option.id === DecorationType.BLOB_SELECTOR) {
+                  } else if (option.id === 'CORNER_BLOB_SELECTOR') {
                     handleBlobCornerMenuClick(event);
-                  }
-                   else {
+                  } else {
                     handleAddDecoration(option.id);
                   }
                 }}
                 title={`Add ${option.name}`}
-                aria-haspopup={option.id === DecorationType.CORNER_SELECTOR || option.id === DecorationType.BLOB_SELECTOR ? "true" : undefined}
+                aria-haspopup={
+                  option.id === DecorationType.CORNER_SELECTOR || option.id === 'CORNER_BLOB_SELECTOR'
+                    ? "true"
+                    : undefined
+                }
                 aria-controls={
-                  option.id === DecorationType.CORNER_SELECTOR ? "corner-select-menu" :
-                  (option.id === DecorationType.BLOB_SELECTOR ? "blob-corner-select-menu" : undefined)
+                  option.id === DecorationType.CORNER_SELECTOR
+                    ? "corner-select-menu"
+                    : option.id === 'CORNER_BLOB_SELECTOR'
+                    ? "blob-corner-select-menu"
+                    : undefined
                 }
                 sx={{
                     display: 'flex',
@@ -217,16 +178,16 @@ const DecorationEditorSection: React.FC<DecorationEditorSectionProps> = ({
           open={Boolean(blobCornerMenuAnchorEl)}
           onClose={handleBlobCornerMenuClose}
           MenuListProps={{
-            'aria-labelledby': 'blob-corner-shape-button',
+            'aria-labelledby': 'blob-shape-corner-button',
           }}
         >
-          {BLOB_CORNER_TYPES_OPTIONS.map((blobOpt) => (
+          {CORNER_BLOB_TYPES_OPTIONS.map((cornerOpt) => (
             <MenuItem
-              key={blobOpt.type}
-              onClick={() => handleAddSpecificBlobCorner(blobOpt.type)}
+              key={cornerOpt.type}
+              onClick={() => handleAddBlobToCorner(cornerOpt.type)}
             >
-              <Typography component="span" sx={{ mr: 1.5, fontSize: '1.2em' }} aria-hidden="true">{blobOpt.icon}</Typography>
-              {blobOpt.label}
+              <Typography component="span" sx={{ mr: 1.5, fontSize: '1.2em' }} aria-hidden="true">{cornerOpt.icon}</Typography>
+              {cornerOpt.label}
             </MenuItem>
           ))}
         </Menu>
@@ -239,15 +200,17 @@ const DecorationEditorSection: React.FC<DecorationEditorSectionProps> = ({
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             {activeSlide.decorations.map(dec => {
+              const optionInfo =
+                DECORATION_OPTIONS.find(opt => opt.id === dec.type) ||
+                CORNER_TYPES_OPTIONS.find(opt => opt.type === dec.type) ||
+                CORNER_BLOB_TYPES_OPTIONS.find(opt => opt.type === dec.type);
               let decorationName = 'Unknown Decoration';
-              const cornerOptInfo = CORNER_TYPES_OPTIONS.find(opt => opt.type === dec.type);
-              const blobOptInfo = BLOB_CORNER_TYPES_OPTIONS.find(opt => opt.type === dec.type);
-              const generalOptInfo = DECORATION_OPTIONS.find(opt => opt.id === dec.type);
-
-              if (cornerOptInfo) decorationName = cornerOptInfo.label;
-              else if (blobOptInfo) decorationName = blobOptInfo.label;
-              else if (generalOptInfo) decorationName = generalOptInfo.name;
-
+              if (optionInfo) {
+                decorationName =
+                  (optionInfo as DecorationOption).name ||
+                  (optionInfo as typeof CORNER_TYPES_OPTIONS[0]).label ||
+                  (optionInfo as typeof CORNER_BLOB_TYPES_OPTIONS[0]).label;
+              }
 
               const currentBorderSides = dec.borderSides || { top: true, right: true, bottom: true, left: true };
               const selectedSideValues = Object.entries(currentBorderSides)
@@ -255,33 +218,14 @@ const DecorationEditorSection: React.FC<DecorationEditorSectionProps> = ({
                                           .map(([sideName]) => sideName);
 
               const currentBorderWidth = dec.borderWidth === undefined ? DEFAULT_BORDER_WIDTH : dec.borderWidth;
-              
-              const isTraditionalCorner = CORNER_TYPES_OPTIONS.some(opt => opt.type === dec.type);
-              const isBlobCorner = BLOB_CORNER_TYPES_OPTIONS.some(opt => opt.type === dec.type);
-              const isGeometricBackground = dec.type === DecorationType.GEOMETRIC_BACKGROUND;
-              const showPageNumberSwitch = (isTraditionalCorner || isBlobCorner) && dec.showPageNumber !== undefined;
-
-              const totalGeometricShapes = dec.geometricShapes?.length ?? 0;
-              const currentVisibleGeometricShapes = dec.visibleShapeCount ?? totalGeometricShapes;
 
 
               return (
                 <Paper key={dec.id} elevation={2} sx={{ p: 1.5, bgcolor: 'action.hover' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: (isGeometricBackground || showPageNumberSwitch || dec.type === DecorationType.BORDER_SIMPLE) ? 1 : 0.5 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 'medium', color: 'text.primary', flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'medium', color: 'text.primary' }}>
                       {decorationName}
                     </Typography>
-                    {(isBlobCorner || isGeometricBackground) && (
-                       <IconButton
-                        onClick={() => isBlobCorner ? handleRefreshBlobShape(dec) : handleRefreshGeometricShapes(dec)}
-                        size="small"
-                        color="default" 
-                        aria-label={`Refresh ${decorationName} ${isBlobCorner ? 'shape' : 'pattern'}`}
-                        sx={{ mr: 0.5 }} 
-                      >
-                        <RefreshIcon fontSize="small"/>
-                      </IconButton>
-                    )}
                     <IconButton
                       onClick={() => onRemoveDecoration(dec.id)}
                       size="small"
@@ -291,8 +235,7 @@ const DecorationEditorSection: React.FC<DecorationEditorSectionProps> = ({
                       <DeleteIcon fontSize="small"/>
                     </IconButton>
                   </Box>
-
-                  {showPageNumberSwitch && (
+                  {isCornerDecoration(dec.type) && (
                     <FormControlLabel
                       control={
                         <Switch
@@ -302,47 +245,12 @@ const DecorationEditorSection: React.FC<DecorationEditorSectionProps> = ({
                         />
                       }
                       label={<Typography variant="caption">Show Page Number</Typography>}
-                      sx={{mt: -0.5, mb: 0.5}} 
+                      sx={{mt: -0.5, mb: -0.5}} // Fine-tune spacing
                     />
                   )}
-
-                  {isGeometricBackground && (
-                    <Stack spacing={2} sx={{ mt: 1 }}>
-                       <Divider sx={{mb:1}}/>
-                       <FormControl fullWidth size="small">
-                         <InputLabel id={`geo-shape-type-label-${dec.id}`}>Shape Type</InputLabel>
-                         <Select
-                           labelId={`geo-shape-type-label-${dec.id}`}
-                           value={dec.selectedShapeType || 'mixed'}
-                           label="Shape Type"
-                           onChange={(e) => handleGeometricShapeTypeChange(dec.id, e as SelectChangeEvent<GeometricShapeType | 'mixed'>)}
-                         >
-                           {GEOMETRIC_SHAPE_FILTER_OPTIONS.map(opt => (
-                             <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                           ))}
-                         </Select>
-                       </FormControl>
-                       <Box>
-                          <Typography variant="caption" display="block" id={`visible-shapes-slider-label-${dec.id}`} gutterBottom>
-                            Visible Shapes: {currentVisibleGeometricShapes} / {totalGeometricShapes}
-                          </Typography>
-                          <Slider
-                            size="small"
-                            value={currentVisibleGeometricShapes}
-                            min={0}
-                            max={totalGeometricShapes}
-                            onChange={(_, newValue) => handleVisibleShapeCountChange(dec.id, newValue)}
-                            aria-labelledby={`visible-shapes-slider-label-${dec.id}`}
-                            valueLabelDisplay="auto"
-                            disabled={totalGeometricShapes === 0}
-                          />
-                       </Box>
-                    </Stack>
-                  )}
-
                   {dec.type === DecorationType.BORDER_SIMPLE && (
                     <Stack spacing={2} sx={{ mt: 1.5 }}>
-                       <Divider sx={{mb:1}}/>
+                       <Divider/>
                        <Box>
                           <Typography variant="caption" display="block" sx={{ mb: 1, fontWeight: 'medium' }}>
                             Border Sides
