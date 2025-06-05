@@ -55,7 +55,16 @@ async function build() {
     /<script type="module" src="\/index.tsx"><\/script>/,
     '<script type="module" src="./main.js"></script>'
   );
-  // Ensure any other dev-specific paths are handled if necessary
+  // Also handle relative path (in case it's not absolute)
+  indexHtmlContent = indexHtmlContent.replace(
+    /<script type="module" src="\.\.?\/index.tsx"><\/script>/,
+    '<script type="module" src="./main.js"></script>'
+  );
+  // Remove any duplicate script tags for index.tsx
+  indexHtmlContent = indexHtmlContent.replace(
+    /<script type="module" src="index.tsx"><\/script>/g,
+    ''
+  );
 
   await fs.writeFile(indexPath, indexHtmlContent);
   console.log('index.html updated.');
