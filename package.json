@@ -1,5 +1,5 @@
 {
-  "name": "slide-creator",
+  "name": "linkedin-slide-creator",
   "version": "1.0.0",
   "description": "A web application to create slideshows.",
   "type": "module",
@@ -15,11 +15,14 @@
     "deploy": "gh-pages -d docs"
   },
   "devDependencies": {
+    "@types/node": "^22.15.29",
+    "@types/react-dom": "^19.1.6",
     "esbuild": "^0.20.2",
     "fs-extra": "^11.2.0",
     "gh-pages": "^6.1.1",
     "rimraf": "^5.0.5",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vite": "^6.3.5"
   },
   "dependencies": {
     "@emotion/react": "^11.11.4",
